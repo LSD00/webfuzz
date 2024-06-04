@@ -32,12 +32,12 @@ func (w *Worker) MakeRequest() (Resp, error) {
 	if err != nil {
 		return Resp{}, err
 	}
-	if w.tlsEnabled {
+	switch w.tlsEnabled {
+	case true:
 		request.SetRequestURI(fmt.Sprintf("https://%s%s", w.domain, string(request.RequestURI())))
-	} else {
+	default:
 		request.SetRequestURI(fmt.Sprintf("http://%s%s", w.domain, string(request.RequestURI())))
 	}
-
 	resp := fasthttp.AcquireResponse()
 	client := &fasthttp.Client{}
 	client.Do(request, resp)

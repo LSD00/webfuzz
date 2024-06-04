@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	domain, reqfile, wordlist, invalid string
-	th                                 int
-	opt                                workers.Options
+	domain, reqfile, wordlist, invalid, flags string
+	th                                        int
+	opt                                       workers.Options
 )
 
 func main() {
@@ -22,12 +22,14 @@ func main() {
 	kingpin.Flag("threads", "setting threads").Default("25").IntVar(&th)
 	kingpin.Flag("tls", "is target use tls").Default("false").BoolVar(&opt.TlsEnabled)
 	kingpin.Flag("bad-codes", "invalid codes for fuzzing ex. 404, 503, 400").Default("404").StringVar(&invalid)
+	kingpin.Flag("encoders", "encode payloads: urlencode, base64, hex").Default("none").Short('e').StringVar(&flags)
 	kingpin.Parse()
 	opt.InvalidCode = strings.Split(strings.ReplaceAll(invalid, " ", ""), ",")
 	worker, err := workers.NewPool(wordlist, reqfile, th)
 	if err != nil {
 		fmt.Println(err)
 	}
+	worker.AddFlags(strings.Split(strings.ReplaceAll(flags, " ", ""), ","))
 	worker.Options = opt
 	fmt.Println(`
 	 _    _      _     ______             
