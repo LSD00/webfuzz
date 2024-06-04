@@ -11,7 +11,7 @@ wget https://github.com/LSD00/webfuzz/releases/download/v1.0.0/webfuzz_Linux_x86
 ## Usage 
 To use webfuzz you need to write your raw http-requests in a txt file with a template, for example where None is the absence of any encoder : 
 ```
-GET /{{{ .CreatePayload `none` }} HTTP/1.1
+GET /{{ .Payload }} HTTP/1.1
 Host: testphp.vulnweb.com
 User-Agent: curl/7.81.0
 Accept: */*
