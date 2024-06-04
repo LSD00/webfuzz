@@ -15,23 +15,23 @@ import (
 )
 
 type Options struct {
-	TlsEnabled  bool
-	Regex       string
-	InvalidCode []string
+	Concurrents                              int
+	TlsEnabled                               bool
+	Regex, Domain, RequestFile, WordlistFile string
+	InvalidCode, Encoders                    []string
 }
 
 type Pool struct {
-	concurrents      int
-	wordlists, flags []string
-	deflenght        int
-	req              *template.Template
-	Options          Options
+	wordlists      []string
+	default_length int
+	req            *template.Template
+	options        Options
 }
 
-func NewPool(wordlist, reqfile string, concurrents int) (*Pool, error) {
+func NewPool(options Options) (*Pool, error) {
 	var pool Pool
-	pool.concurrents = concurrents
-	file, err := os.Open(wordlist)
+	pool.options = options
+	file, err := os.Open(options.WordlistFile)
 	if err != nil {
 		return nil, err
 	}
@@ -40,34 +40,33 @@ func NewPool(wordlist, reqfile string, concurrents int) (*Pool, error) {
 	for reader.Scan() {
 		pool.wordlists = append(pool.wordlists, reader.Text())
 	}
-	pool.req, err = template.ParseFiles(reqfile)
-	pool.deflenght = formatter.CountDefaultContentLenght(reqfile)
+	pool.req, err = template.ParseFiles(options.RequestFile)
+	pool.default_length = formatter.CountDefaultContentLength(options.RequestFile)
 	if err != nil {
 		return nil, err
 	}
 	return &pool, nil
 }
 
-func (p *Pool) AddFlags(flags []string) {
-	p.flags = flags
-}
-
-func (p *Pool) worker(wg *sync.WaitGroup, wordlist []string, domain string) {
+func (p *Pool) worker(wg *sync.WaitGroup, chunked_wordlist []string) {
 	defer wg.Done()
-	re := regexp.MustCompile(p.Options.Regex)
-	for _, value := range wordlist {
+	re := regexp.MustCompile(p.options.Regex)
+	for _, value := range chunked_wordlist {
 		var buf bytes.Buffer
-		payload := formatter.NewPayload(value, p.flags)
-		payload.AddDefaultContentLenght(p.deflenght)
+		payload := formatter.NewPayload(value, p.options.Encoders)
+		payload.DefaultContentLength = p.default_length
 		payload.CreatePayload()
 		p.req.Execute(&buf, payload)
-		worker := reqgen.NewWorker(p.Options.TlsEnabled, bufio.NewReader(&buf), domain)
+		worker := reqgen.NewWorker(p.options.TlsEnabled, bufio.NewReader(&buf), p.options.Domain)
 		resp, err := worker.MakeRequest()
+
+		// Io.WriteString is necessary because it immediately writes to stdout
+		// with fmt.Println there are problems and it may not output all
 		io.WriteString(os.Stdout, buf.String())
 		if err != nil {
 			io.WriteString(os.Stdout, err.Error())
 			return
-		} else if !slices.Contains(p.Options.InvalidCode, fmt.Sprint(resp.Status)) && re.MatchString(resp.BodyData) {
+		} else if !slices.Contains(p.options.InvalidCode, fmt.Sprint(resp.Status)) && re.MatchString(resp.BodyData) {
 			var formatted_code string
 			if resp.Status >= 200 && resp.Status < 300 {
 				formatted_code = fmt.Sprintf("\033[92m%d\033[0m", resp.Status)
@@ -81,18 +80,18 @@ func (p *Pool) worker(wg *sync.WaitGroup, wordlist []string, domain string) {
 	}
 }
 
-func (p *Pool) Fuzz(domain string) {
+func (p *Pool) Fuzz() {
 	var wg sync.WaitGroup
-	chunks := len(p.wordlists) / p.concurrents
-	for i := 0; i < p.concurrents; i++ {
+	chunks := len(p.wordlists) / p.options.Concurrents
+	for i := 0; i < p.options.Concurrents; i++ {
 		var chunked_wordlist []string
-		if i != p.concurrents-1 {
+		if i != p.options.Concurrents-1 {
 			chunked_wordlist = p.wordlists[i*chunks : (i+1)*chunks]
 		} else {
 			chunked_wordlist = p.wordlists[i*chunks:]
 		}
 		wg.Add(1)
-		go p.worker(&wg, chunked_wordlist, domain)
+		go p.worker(&wg, chunked_wordlist)
 	}
 	wg.Wait()
 }
