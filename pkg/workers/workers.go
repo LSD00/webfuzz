@@ -62,7 +62,6 @@ func (p *Pool) worker(wg *sync.WaitGroup, chunked_wordlist []string) {
 
 		// Io.WriteString is necessary because it immediately writes to stdout
 		// with fmt.Println there are problems and it may not output all
-		io.WriteString(os.Stdout, buf.String())
 		if err != nil {
 			io.WriteString(os.Stdout, err.Error())
 			return
