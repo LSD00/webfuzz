@@ -6,7 +6,7 @@ To work with webfuzz you need to upload a request to a file and use a template t
 ## Installation 
 It is possible to download both ready binary file and build from source, but I recommend to download the binary file for your operating system, for example here is an example of downloading for Linux_x86_64
 ```sh 
-wget https://github.com/LSD00/webfuzz/releases/download/v1.0.0/webfuzz_Linux_x86_64.tar.gz
+wget https://github.com/LSD00/webfuzz/releases/download/v1.1.1/webfuzz_Linux_x86_64.tar.gz
 ```
 ## Usage 
 To use webfuzz you need to write your raw http-requests in a txt file with a template, for example where None is the absence of any encoder : 
